@@ -1,121 +1,504 @@
-import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'app_style.dart';
+import 'cart_page.dart';
+import 'checkout_page.dart';
+import 'firebase_options.dart';
+import 'home_page.dart';
+import 'login_page.dart';
+import 'orders_page.dart';
+import 'profile_page.dart';
+import 'store_data.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://gnphutwiqnvhdypmetzc.supabase.co',
+    publishableKey: 'sb_publishable_HdqwED3mFHF-tfUF-3qHvw_9_4-ww5r',
+  );
+
+  bool firebaseReady = false;
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    firebaseReady = true;
+  } catch (error) {
+    debugPrint(
+      'Firebase is not set up for this platform. '
+      'Using local data only. $error',
+    );
+  }
+
+  runApp(MyApp(firebaseReady: firebaseReady));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final bool firebaseReady;
 
-  // This widget is the root of your application.
+  const MyApp({
+    super.key,
+    required this.firebaseReady,
+  });
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final List<Customer> accounts = [demoCustomer];
+  Customer? currentCustomer;
+
+  void logIn(Customer customer) {
+    setState(() => currentCustomer = customer);
+  }
+
+  void signUp(Customer customer) {
+    setState(() {
+      accounts.add(customer);
+      currentCustomer = customer;
+    });
+  }
+
+  void updateCustomer(Customer updatedCustomer) {
+    setState(() {
+      final index = accounts.indexWhere(
+        (account) => account.email == updatedCustomer.email,
+      );
+
+      if (index != -1) {
+        accounts[index] = updatedCustomer;
+      }
+
+      currentCustomer = updatedCustomer;
+    });
+  }
+
+  void logOut() {
+    setState(() => currentCustomer = null);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final customer = currentCustomer;
+
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: storeName,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: purple,
+          primary: purple,
+          secondary: pink,
+          secondaryContainer: blush,
+          onSecondaryContainer: pink,
+        ),
+        scaffoldBackgroundColor: background,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: background,
+          foregroundColor: darkText,
+          scrolledUnderElevation: 0,
+          titleTextStyle: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: darkText,
+          ),
+        ),
+        cardTheme: const CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+            side: BorderSide(color: borderColor),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: purple,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: purple,
+            minimumSize: const Size(0, 48),
+            side: const BorderSide(color: pink),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: blush,
+        ),
+        inputDecorationTheme: InputDecorationThemeData(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: borderColor),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: borderColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: pink,
+              width: 2,
+            ),
+          ),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: customer == null
+          ? LoginPage(
+              accounts: accounts,
+              onLogIn: logIn,
+              onSignUp: signUp,
+            )
+          : MainPage(
+              firebaseReady: widget.firebaseReady,
+              customer: customer,
+              onCustomerChanged: updateCustomer,
+              onLogOut: logOut,
+            ),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class MainPage extends StatefulWidget {
+  final bool firebaseReady;
+  final Customer customer;
+  final ValueChanged<Customer> onCustomerChanged;
+  final VoidCallback onLogOut;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  const MainPage({
+    super.key,
+    required this.firebaseReady,
+    required this.customer,
+    required this.onCustomerChanged,
+    required this.onLogOut,
+  });
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainPage> createState() => _MainPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainPageState extends State<MainPage> {
+  int currentTab = 0;
+  bool isRefreshingPayments = false;
 
-  void _incrementCounter() {
+  final List<CartItem> cart = [];
+  final List<StoreOrder> orders = [];
+
+  late final AppLifecycleListener lifecycleListener;
+  late final Timer paymentStatusTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    lifecycleListener = AppLifecycleListener(
+      onResume: () => _refreshPaymentStatuses(quiet: true),
+    );
+    paymentStatusTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _refreshPaymentStatuses(quiet: true),
+    );
+  }
+
+  @override
+  void dispose() {
+    paymentStatusTimer.cancel();
+    lifecycleListener.dispose();
+    super.dispose();
+  }
+
+  void goToTab(int index) {
+    setState(() => currentTab = index);
+
+    if (index == 2) {
+      _refreshPaymentStatuses();
+    }
+  }
+
+  Future<void> _refreshPaymentStatuses({bool quiet = false}) async {
+    if (isRefreshingPayments) return;
+
+    final onlineOrders = orders
+        .where(
+          (order) =>
+              order.externalId != null &&
+              order.externalId!.isNotEmpty &&
+              (!quiet || order.paymentStatus == 'Pending'),
+        )
+        .toList();
+
+    if (onlineOrders.isEmpty) return;
+
+    setState(() => isRefreshingPayments = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      for (final order in onlineOrders) {
+        final externalId = order.externalId!;
+
+        final FunctionResponse response;
+
+        try {
+          response = await supabase.functions.invoke(
+            'payment-status',
+            body: {'external_id': externalId},
+          );
+        } on FunctionException catch (error) {
+          final details = error.details;
+
+          if (error.status == 404 &&
+              details is Map &&
+              details['error'] == 'Order not found') {
+            debugPrint(
+              'No Supabase order found for $externalId',
+            );
+            continue;
+          }
+
+          rethrow;
+        }
+
+        final data = response.data;
+        final status = (data is Map ? data['status'] ?? '' : '')
+            .toString()
+            .toUpperCase();
+
+        String newPaymentStatus;
+
+        switch (status) {
+          case 'PAID':
+            newPaymentStatus = 'Paid';
+            break;
+          case 'FAILED':
+          case 'EXPIRED':
+          case 'CANCELLED':
+          case 'CANCELED':
+            newPaymentStatus = 'Failed';
+            break;
+          default:
+            newPaymentStatus = 'Pending';
+        }
+
+        order.paymentStatus = newPaymentStatus;
+      }
+
+      if (mounted) {
+        setState(() {});
+
+        if (!quiet) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment statuses refreshed.'),
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      debugPrint('Payment status refresh failed: $error');
+
+      if (mounted && !quiet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment refresh error: $error'),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isRefreshingPayments = false);
+      }
+    }
+  }
+
+  void addToCart(Product product) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      final index = cart.indexWhere(
+        (item) => item.product == product,
+      );
+
+      if (index == -1) {
+        cart.add(CartItem(product: product));
+      } else {
+        cart[index].quantity++;
+      }
     });
+  }
+
+  void increaseQuantity(CartItem item) {
+    setState(() => item.quantity++);
+  }
+
+  void decreaseQuantity(CartItem item) {
+    setState(() {
+      if (item.quantity > 1) {
+        item.quantity--;
+      } else {
+        cart.remove(item);
+      }
+    });
+  }
+
+  void removeFromCart(CartItem item) {
+    setState(() => cart.remove(item));
+  }
+
+  Future<void> openCheckout() async {
+    final order = await Navigator.push<StoreOrder>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutPage(
+          customer: widget.customer,
+          onCustomerChanged: widget.onCustomerChanged,
+          cart: cart,
+          orderNumber: 'SS-${1001 + orders.length}',
+          firebaseReady: widget.firebaseReady,
+        ),
+      ),
+    );
+
+    if (order == null || !mounted) return;
+
+    setState(() {
+      orders.insert(0, order);
+      cart.clear();
+      currentTab = 2;
+    });
+
+    await _refreshPaymentStatuses();
+
+    if (!mounted) return;
+
+    final wantsToTrack = await showDialog<bool>(
+      context: context,
+      builder: (context) => OrderPlacedDialog(order: order),
+    );
+
+    if (wantsToTrack == true && mounted) {
+      await openTracking(order);
+    }
+  }
+
+  Future<void> openTracking(StoreOrder order) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderTrackingPage(order: order),
+      ),
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void logOut() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'You have logged out. See you again, suki!',
+        ),
+      ),
+    );
+
+    widget.onLogOut();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final cartCount = countItems(cart);
+
+    final pages = [
+      HomePage(
+        customer: widget.customer,
+        cart: cart,
+        onAddToCart: addToCart,
+        onOpenCart: () => goToTab(1),
+      ),
+      CartPage(
+        cart: cart,
+        onIncrease: increaseQuantity,
+        onDecrease: decreaseQuantity,
+        onRemove: removeFromCart,
+        onCheckout: openCheckout,
+        onShop: () => goToTab(0),
+      ),
+      OrdersPage(
+        orders: orders,
+        onOpenOrder: openTracking,
+        onShop: () => goToTab(0),
+      ),
+      ProfilePage(
+        customer: widget.customer,
+        onCustomerChanged: widget.onCustomerChanged,
+        orderCount: orders.length,
+        onOpenOrders: () => goToTab(2),
+        onLogOut: logOut,
+      ),
+    ];
+
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: IndexedStack(
+        index: currentTab,
+        children: pages,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentTab,
+        onDestinationSelected: goToTab,
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: CartIcon(count: cartCount),
+            selectedIcon: CartIcon(
+              count: cartCount,
+              filled: true,
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+            label: 'Cart',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long),
+            label: 'Orders',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }
